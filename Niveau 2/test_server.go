@@ -48,7 +48,7 @@ func answer(connection net.Conn) {
 
 func sendFileToClient(connection net.Conn) {
 	fmt.Println("Let's send the modified picture")
-	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/Niveau 2/image_temp_modifiee.png")
+	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/Niveau 2/image_temp.png")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -153,7 +153,7 @@ func do_box_blur() {
 		}
 	}
 
-	outputFile, err := os.Create("image_temp_modifiee.png")
+	outputFile, err := os.Create("image_temp.png")
 	if err != nil {
 		fmt.Println("pas possible de créer le nv fichier")
 	}
