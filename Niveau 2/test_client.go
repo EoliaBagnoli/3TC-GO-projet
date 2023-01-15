@@ -21,7 +21,7 @@ func main() {
 }
 
 func answer(connection net.Conn) {
-	fmt.Println("connected to a server !")
+	fmt.Println("Connected to a server !")
 	defer connection.Close()
 	sendFileToServer(connection)
 	getFileFromServer(connection)
@@ -29,7 +29,7 @@ func answer(connection net.Conn) {
 }
 
 func sendFileToServer(connection net.Conn) {
-	fmt.Println("Connected to the server! Let's send the picture")
+	fmt.Println("Let's send the picture we want to modify")
 	defer connection.Close()
 	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test1.png")
 	if err != nil {
@@ -42,12 +42,22 @@ func sendFileToServer(connection net.Conn) {
 		return
 	}
 	fileSize := fillString(strconv.FormatInt(fileInfo.Size(), 10), 10)
+	//print("File has a size of " + fileSize)
 	fileName := fillString(fileInfo.Name(), 64)
-	fmt.Println("Sending filename and filesize!")
-	connection.Write([]byte(fileSize))
+
+	size := []byte(fileSize)
+	println(" ")
+	println("File has a size of : ")
+	fmt.Println(size)
+	println(" ")
+	println(" ")
+
+	//*********************************************************************PROBLEME****************************************************************
+	connection.Write(size)
+
+	//connection.Write([]byte(fileSize))
 	connection.Write([]byte(fileName))
 	sendBuffer := make([]byte, BUFFERSIZE)
-	fmt.Println("Start sending file!")
 	for {
 		_, err = file.Read(sendBuffer)
 		if err == io.EOF {
@@ -59,13 +69,17 @@ func sendFileToServer(connection net.Conn) {
 }
 
 func getFileFromServer(connection net.Conn) {
-	fmt.Println("Connected to server, start receiving the file name and file size")
+	fmt.Println("Receiving the modified file")
 	bufferFileName := make([]byte, 64)
 	bufferFileSize := make([]byte, 10)
 
 	connection.Read(bufferFileSize)
+	fmt.Println(" ")
+	fmt.Println("Receiving file of size : ")
+	fmt.Println(bufferFileSize)
+	fmt.Println(" ")
+	fmt.Println(" ")
 	fileSize, _ := strconv.ParseInt(strings.Trim(string(bufferFileSize), ":"), 10, 64)
-
 	connection.Read(bufferFileName)
 	//fileName := strings.Trim(string(bufferFileName), ":")
 

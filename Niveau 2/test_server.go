@@ -38,18 +38,18 @@ func main() {
 }
 
 func answer(connection net.Conn) {
-	fmt.Println("connected to a server !")
 	defer connection.Close()
 	getFileFromClient(connection)
 	do_box_blur()
+	println("*************Box blur done**************")
 	sendFileToClient(connection)
 	connection.Close()
 }
 
 func sendFileToClient(connection net.Conn) {
-	fmt.Println("Connected to the server! Let's send the picture")
+	fmt.Println("Let's send the modified picture")
 	defer connection.Close()
-	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/Niveau 2/image_temp.png")
+	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/Niveau 2/image_temp_modifiee.png")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -60,13 +60,17 @@ func sendFileToClient(connection net.Conn) {
 		return
 	}
 	fileSize := fillString(strconv.FormatInt(fileInfo.Size(), 10), 10)
-	println("File has size of " + fileSize)
 	fileName := fillString(fileInfo.Name(), 64)
-	fmt.Println("Sending filename and filesize!")
-	connection.Write([]byte(fileSize))
+	//print("File has a size of " + fileSize)
+	size := []byte(fileSize)
+	println(" ")
+	println("File has a size of : ")
+	fmt.Println(size)
+	println(" ")
+	println(" ")
+	connection.Write(size)
 	connection.Write([]byte(fileName))
 	sendBuffer := make([]byte, BUFFERSIZE)
-	fmt.Println("Start sending file!")
 	for {
 		_, err = file.Read(sendBuffer)
 		if err == io.EOF {
@@ -78,11 +82,16 @@ func sendFileToClient(connection net.Conn) {
 }
 
 func getFileFromClient(connection net.Conn) {
-	fmt.Println("Connected to server, start receiving the file name and file size")
+	fmt.Println("Receiving the file")
 	bufferFileName := make([]byte, 64)
 	bufferFileSize := make([]byte, 10)
 
 	connection.Read(bufferFileSize)
+	fmt.Println(" ")
+	fmt.Println("Receiving file of size : ")
+	fmt.Println(bufferFileSize)
+	fmt.Println(" ")
+	fmt.Println(" ")
 	fileSize, _ := strconv.ParseInt(strings.Trim(string(bufferFileSize), ":"), 10, 64)
 
 	connection.Read(bufferFileName)
@@ -145,7 +154,7 @@ func do_box_blur() {
 		}
 	}
 
-	outputFile, err := os.Create("image_temp.png")
+	outputFile, err := os.Create("image_temp_modifiee.png")
 	if err != nil {
 		fmt.Println("pas possible de créer le nv fichier")
 	}
