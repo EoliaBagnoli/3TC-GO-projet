@@ -48,7 +48,6 @@ func answer(connection net.Conn) {
 
 func sendFileToClient(connection net.Conn) {
 	fmt.Println("Let's send the modified picture")
-	defer connection.Close()
 	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/Niveau 2/image_temp_modifiee.png")
 	if err != nil {
 		fmt.Println(err)

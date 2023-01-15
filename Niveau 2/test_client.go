@@ -30,8 +30,7 @@ func answer(connection net.Conn) {
 
 func sendFileToServer(connection net.Conn) {
 	fmt.Println("Let's send the picture we want to modify")
-	defer connection.Close()
-	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test1.png")
+	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test3.png")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -52,7 +51,6 @@ func sendFileToServer(connection net.Conn) {
 	println(" ")
 	println(" ")
 
-	//*********************************************************************PROBLEME****************************************************************
 	connection.Write(size)
 
 	//connection.Write([]byte(fileSize))
