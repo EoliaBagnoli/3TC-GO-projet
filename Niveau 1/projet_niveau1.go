@@ -19,10 +19,9 @@ import (
 )
 
 var newImg = image.NewRGBA(image.Rect(0, 0, 10, 10))
+var pourcentage_flou = 0.005
 
 func main() {
-
-	nv_flou := 40
 
 	catFile, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test3.png")
 	if err != nil {
@@ -37,15 +36,22 @@ func main() {
 
 	start := time.Now()
 
-	// utilisation des goroutines pour faire plusieurs fois le floutage sur des portions de l'image.
+	// cette fois, le niveau de flou dépend du pourcentage donné (100% = moyenne de tous les pixels, 0% = image initiale) ça march po :((
 
-	//création nvelle image qui sera l'image floue finale
+	/*nv_flou_x := int(pourcentage_flou * float64(cat.Bounds().Size().X))
+	nv_flou_y := int(pourcentage_flou * float64(cat.Bounds().Size().Y))
+	fmt.Println(nv_flou_x)
+	fmt.Println(nv_flou_y)*/
+	nv_flou_x := 15
+	nv_flou_y := 10
+
+	//création nvelle image qui sera l'image floue finale à la taille de l'ancienne
 	newImg = image.NewRGBA(image.Rect(0, 0, cat.Bounds().Size().X, cat.Bounds().Size().Y))
 
-	for i := 0; i < (cat.Bounds().Size().X); i = i + nv_flou {
-		for j := 0; j < (cat.Bounds().Size().Y); j = j + nv_flou {
+	for i := 0; i < (cat.Bounds().Size().X); i = i + nv_flou_x {
+		for j := 0; j < (cat.Bounds().Size().Y); j = j + nv_flou_y {
 			//lancer la goroutine avec la modification de la nouvelle image (globale) direct dans la fonction
-			go box_blur(cat, nv_flou, i, j)
+			go box_blur(cat, nv_flou_x, nv_flou_y, i, j)
 		}
 	}
 
@@ -64,7 +70,7 @@ func main() {
 
 // @param : image à flouter, niveau de flou, numéro de la portion d'image par rapport à l'image originale
 
-func box_blur(oldImg image.Image, nv_flou int, i int, j int) /* *image.RGBA*/ {
+func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, i int, j int) /* *image.RGBA*/ {
 
 	/*sans go routines : tps moyen d'execution = 40 ms sur test3.png (1280 x 800 px)
 	avec go routines : tps moyen d'execution = entre 1 et 11 ms sur même fichier pour flou de 30
@@ -89,8 +95,8 @@ func box_blur(oldImg image.Image, nv_flou int, i int, j int) /* *image.RGBA*/ {
 
 	nbreElem = 0
 
-	for k := i; k < i+nv_flou; k++ {
-		for l := j; l < j+nv_flou; l++ {
+	for k := i; k < i+nv_flou_x; k++ {
+		for l := j; l < j+nv_flou_y; l++ {
 
 			//rester en uint32 ici
 
@@ -112,8 +118,8 @@ func box_blur(oldImg image.Image, nv_flou int, i int, j int) /* *image.RGBA*/ {
 	newAlphaConv = uint8(newAlpha / 257)
 
 	// au lieu d'écrire dans newImg, on écrit dans la grande newImg (var globale)
-	for k := i; k < i+nv_flou; k++ {
-		for l := j; l < j+nv_flou; l++ {
+	for k := i; k < i+nv_flou_x; k++ {
+		for l := j; l < j+nv_flou_y; l++ {
 			newImg.Set(k, l, color.RGBA{newRedConv, newGreenConv, newBlueConv, newAlphaConv})
 		}
 	}
