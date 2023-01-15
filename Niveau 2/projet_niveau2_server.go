@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"image"
 	"image/color"
@@ -10,93 +9,128 @@ import (
 	"log"
 	"net"
 	"os"
-	"time"
-)
-
-const (
-	HOST = "localhost"
-	PORT = "1213"
-	TYPE = "tcp"
+	"strconv"
+	"strings"
 )
 
 var newImg = image.NewRGBA(image.Rect(0, 0, 10, 10))
 var pourcentage_flou = 0.005
 
-func main() {
-	//création du server et attente du client
-	listen, err := net.Listen(TYPE, HOST+":"+PORT)
-	if err != nil {
-		fmt.Printf("problème au listen")
-		log.Fatal(err) // pas fatal
-	}
-	defer listen.Close()
+const BUFFERSIZE = 1024
 
+func main() {
+	server, err := net.Listen("tcp", "localhost:27001")
+	if err != nil {
+		fmt.Println("Error listetning: ", err)
+		os.Exit(1)
+	}
+	defer server.Close()
+	fmt.Println("Server started! Waiting for connections...")
 	for {
-		conn, err := listen.Accept()
+		connection, err := server.Accept()
 		if err != nil {
-			fmt.Printf("problème à listen.Accept")
-			log.Fatal(err) // pas fatal
+			fmt.Println("Error: ", err)
+			os.Exit(1)
 		}
-		go handleRequest(conn)
+		fmt.Println("Client connected")
+		go answer(connection)
 	}
 }
 
-func handleRequest(conn net.Conn) {
+func answer(connection net.Conn) {
+	defer connection.Close()
+	getFileFromClient(connection)
+	do_box_blur()
+	println("*************Box blur done**************")
+	sendFileToClient(connection)
+	connection.Close()
+}
 
-	var currentByte int64 = 0
-
-	fileBuffer := make([]byte, 1024)
-
-	var err error
-	file, err := os.Create("test_reception_TCP.png")
+func sendFileToClient(connection net.Conn) {
+	fmt.Println("Let's send the modified picture")
+	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/Niveau 2/image_temp.png")
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
-
-	for err == nil || err != io.EOF {
-
-		conn.Read(fileBuffer)
-
-		cleanedFileBuffer := bytes.Trim(fileBuffer, "\x00")
-
-		_, err = file.WriteAt(cleanedFileBuffer, currentByte)
-		if len(string(fileBuffer)) != len(string(cleanedFileBuffer)) {
+	fileInfo, err := file.Stat()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fileSize := fillString(strconv.FormatInt(fileInfo.Size(), 10), 10)
+	fileName := fillString(fileInfo.Name(), 64)
+	//print("File has a size of " + fileSize)
+	size := []byte(fileSize)
+	println(" ")
+	println("File has a size of : ")
+	fmt.Println(size)
+	println(" ")
+	println(" ")
+	connection.Write(size)
+	connection.Write([]byte(fileName))
+	sendBuffer := make([]byte, BUFFERSIZE)
+	for {
+		_, err = file.Read(sendBuffer)
+		if err == io.EOF {
 			break
 		}
-		currentByte += 1024
-
+		connection.Write(sendBuffer)
 	}
-
-	conn.Close()
-	file.Close()
-	return
-
-	/*for {
-		//arrivée de message
-		buffer := make([]byte, 1024)
-		_, err := conn.Read(buffer)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// conversion buffer to image.image
-		img := image.NewGray(image.Rect(0, 0, 100, 100))
-		img.Pix = buffer
-
-		//enregistrer dans un fichier
-		outputFile, err := os.Create("test_reception_TCP.png")
-		if err != nil {
-			fmt.Println("pas possible de créer le nv fichier")
-		}
-		png.Encode(outputFile, img)
-		outputFile.Close()
-
-	}*/
+	fmt.Println("File has been sent !")
 }
 
-func answer() {
+func getFileFromClient(connection net.Conn) {
+	fmt.Println("Receiving the file")
+	bufferFileName := make([]byte, 64)
+	bufferFileSize := make([]byte, 10)
 
-	catFile, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test3.png")
+	connection.Read(bufferFileSize)
+	fmt.Println(" ")
+	fmt.Println("Receiving file of size : ")
+	fmt.Println(bufferFileSize)
+	fmt.Println(" ")
+	fmt.Println(" ")
+	fileSize, _ := strconv.ParseInt(strings.Trim(string(bufferFileSize), ":"), 10, 64)
+
+	connection.Read(bufferFileName)
+	//fileName := strings.Trim(string(bufferFileName), ":")
+
+	newFile, err := os.Create("image_temp.png")
+
+	if err != nil {
+		panic(err)
+	}
+	defer newFile.Close()
+	var receivedBytes int64
+
+	for {
+		if (fileSize - receivedBytes) < BUFFERSIZE {
+			io.CopyN(newFile, connection, (fileSize - receivedBytes))
+			connection.Read(make([]byte, (receivedBytes+BUFFERSIZE)-fileSize))
+			break
+		}
+		io.CopyN(newFile, connection, BUFFERSIZE)
+		receivedBytes += BUFFERSIZE
+	}
+	fmt.Println("Received file completely!")
+}
+
+func fillString(retunString string, toLength int) string {
+	for {
+		lengtString := len(retunString)
+		if lengtString < toLength {
+			retunString = retunString + ":"
+			continue
+		}
+		break
+	}
+	return retunString
+}
+
+func do_box_blur() {
+
+	catFile, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/Niveau 2/image_temp.png")
 	if err != nil {
 		log.Fatal(err) // trouver comment enlever le fatal pour pas shutdown tout le programme
 	}
@@ -107,11 +141,9 @@ func answer() {
 		log.Fatal(err)
 	}
 
-	start := time.Now()
 	nv_flou_x := 15
 	nv_flou_y := 10
 
-	//création nvelle image qui sera l'image floue finale à la taille de l'ancienne
 	newImg = image.NewRGBA(image.Rect(0, 0, cat.Bounds().Size().X, cat.Bounds().Size().Y))
 
 	for i := 0; i < (cat.Bounds().Size().X); i = i + nv_flou_x {
@@ -121,20 +153,13 @@ func answer() {
 		}
 	}
 
-	end := time.Now()
-	fmt.Println(end.Sub(start))
-
-	//création du fichier image floutée
-	outputFile, err := os.Create("test_flou_niveau1.png")
+	outputFile, err := os.Create("image_temp.png")
 	if err != nil {
 		fmt.Println("pas possible de créer le nv fichier")
 	}
 	png.Encode(outputFile, newImg)
 	outputFile.Close()
-
 }
-
-// @param : image à flouter, niveau de flou, numéro de la portion d'image par rapport à l'image originale
 
 func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, i int, j int) /* *image.RGBA*/ {
 
@@ -168,12 +193,10 @@ func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, i int, j int) /*
 			nbreElem = nbreElem + 1
 		}
 	}
-
 	newRedConv = uint8(newRed / 257)
 	newGreenConv = uint8(newGreen / 257)
 	newBlueConv = uint8(newBlue / 257)
 	newAlphaConv = uint8(newAlpha / 257)
-
 	for k := i; k < i+nv_flou_x; k++ {
 		for l := j; l < j+nv_flou_y; l++ {
 			newImg.Set(k, l, color.RGBA{newRedConv, newGreenConv, newBlueConv, newAlphaConv})
