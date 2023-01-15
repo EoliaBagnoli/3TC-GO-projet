@@ -6,7 +6,7 @@
 //fonction At(x, y)
 //AlphaAt : avoir le taux de transparence d'un png
 
-package main bonjour
+package main
 
 import (
 	"fmt"
@@ -15,11 +15,12 @@ import (
 	"image/png"
 	"log"
 	"os"
+	"time"
 )
 
 func main() {
 
-	catFile, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELM/test1.png")
+	catFile, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test3.png")
 	if err != nil {
 		log.Fatal(err) // trouver comment enlever le fatal pour pas shutdown tout le programme
 	}
@@ -30,10 +31,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	newImg := gaussian_blur(cat, 40)
+	newImg := box_blur(cat, 30)
 
 	// outputFile is a File type which satisfies Writer interface
-	outputFile, err := os.Create("test.png")
+	outputFile, err := os.Create("test_flou.png")
 	if err != nil {
 		fmt.Println("pas possible de créer le nv fichier")
 	}
@@ -47,11 +48,13 @@ func main() {
 
 }
 
-func gaussian_blur(oldImg image.Image, nv_flou int) *image.RGBA {
+func box_blur(oldImg image.Image, nv_flou int) *image.RGBA {
 
-	// flou gaussien par association de 4 pixels.
-	// créer nouvelle image taille img1.taille
+	// flou gaussien par association de n pixels.
 
+	//sans go routines : tps moyen d'execution = 40 ms sur test3.png (1280 x 800 px)
+
+	start := time.Now()
 	newImg := image.NewRGBA(image.Rect(0, 0, oldImg.Bounds().Size().X, oldImg.Bounds().Size().Y))
 
 	var newRed uint32
@@ -88,13 +91,6 @@ func gaussian_blur(oldImg image.Image, nv_flou int) *image.RGBA {
 
 					r, g, b, a := oldImg.At(k, l).RGBA()
 
-					/*r1 := uint8(r / 257)
-					g1 := uint8(g / 257)
-					b1 := uint8(b / 257)
-					a1 := uint8(a / 257)*/
-
-					fmt.Println(nbreElem + 1)
-
 					newRed = (nbreElem*newRed + r) / (nbreElem + 1)
 					newGreen = (nbreElem*newGreen + g) / (nbreElem + 1)
 					newBlue = (nbreElem*newBlue + b) / (nbreElem + 1)
@@ -116,28 +112,10 @@ func gaussian_blur(oldImg image.Image, nv_flou int) *image.RGBA {
 				}
 			}
 
-			fmt.Println(("******************************************************************************"))
-
-			/*r11, g11, b11, a11 := oldImg.At(i, j).RGBA()
-			r12, g12, b12, a12 := oldImg.At(i, j+1).RGBA()
-			r13, g13, b13, a13 := oldImg.At(i+1, j).RGBA()
-			r14, g14, b14, a14 := oldImg.At(i+1, j+1).RGBA()
-
-			newRed = uint8(((r11 + r12 + r13 + r14) / 4) / 25)
-			newGreen = uint8(((g11 + g12 + g13 + g14) / 4) / 257)
-			newBlue = uint8(((b11 + b12 + b13 + b14) / 4) / 257)
-			newAlpha = uint8(((a11 + a12 + a13 + a14) / 4) / 257)
-
-			newImg.Set(i, j, color.RGBA{newRed, newGreen, newBlue, 255})
-			newImg.Set(i+1, j, color.RGBA{newRed, newGreen, newBlue, 255})
-			newImg.Set(i, j+1, color.RGBA{newRed, newGreen, newBlue, 255})
-			newImg.Set(i+1, j+1, color.RGBA{newRed, newGreen, newBlue, 255})
-
-			fmt.Println(r11)
-			fmt.Println(g11)
-			fmt.Println(b11)
-			fmt.Println(newAlpha)*/
+			//fmt.Println(("******************************************************************************"))
 		}
 	}
+	end := time.Now()
+	fmt.Println(end.Sub(start))
 	return (newImg)
 }
