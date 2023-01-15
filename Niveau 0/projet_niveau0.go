@@ -22,7 +22,7 @@ func main() {
 
 	catFile, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test3.png")
 	if err != nil {
-		log.Fatal(err) // trouver comment enlever le fatal pour pas shutdown tout le programme
+		log.Fatal(err) // enlever le fatal pour pas shutdown tout le programme
 	}
 	defer catFile.Close()
 
@@ -31,19 +31,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	newImg := box_blur(cat, 30)
+	newImg := box_blur(cat, 20)
 
-	// outputFile is a File type which satisfies Writer interface
-	outputFile, err := os.Create("test_flou.png")
+	// création fichier nouvelle image floutée
+	outputFile, err := os.Create("test_flou_niveau0.png")
 	if err != nil {
 		fmt.Println("pas possible de créer le nv fichier")
 	}
 
-	// Encode takes a writer interface and an image interface
-	// We pass it the File and the RGBA
 	png.Encode(outputFile, newImg)
 
-	// Don't forget to close files
 	outputFile.Close()
 
 }
@@ -53,6 +50,7 @@ func box_blur(oldImg image.Image, nv_flou int) *image.RGBA {
 	// flou gaussien par association de n pixels.
 
 	//sans go routines : tps moyen d'execution = 40 ms sur test3.png (1280 x 800 px)
+	// par contre, tps reste le même qu'on fasse un blur de 100 ou de 2 psk dans tous les cas on parcourt tous les pixels à la suite
 
 	start := time.Now()
 	newImg := image.NewRGBA(image.Rect(0, 0, oldImg.Bounds().Size().X, oldImg.Bounds().Size().Y))
@@ -67,12 +65,6 @@ func box_blur(oldImg image.Image, nv_flou int) *image.RGBA {
 	var newGreenConv uint8
 	var newBlueConv uint8
 	var newAlphaConv uint8
-	/*var r uint8
-	var g uint8
-	var b uint8
-	var a uint8*/
-
-	//for y := oldImg.Bounds().Min.Y; y < oldImg.Bounds().Max.Y; y++
 
 	for i := 0; i < (oldImg.Bounds().Size().X); i = i + nv_flou {
 		for j := 0; j < (oldImg.Bounds().Size().Y); j = j + nv_flou {
@@ -88,7 +80,6 @@ func box_blur(oldImg image.Image, nv_flou int) *image.RGBA {
 				for l := j; l < j+nv_flou; l++ {
 
 					//rester en uint32 ici
-
 					r, g, b, a := oldImg.At(k, l).RGBA()
 
 					newRed = (nbreElem*newRed + r) / (nbreElem + 1)
@@ -111,8 +102,6 @@ func box_blur(oldImg image.Image, nv_flou int) *image.RGBA {
 					newImg.Set(k, l, color.RGBA{newRedConv, newGreenConv, newBlueConv, newAlphaConv})
 				}
 			}
-
-			//fmt.Println(("******************************************************************************"))
 		}
 	}
 	end := time.Now()
