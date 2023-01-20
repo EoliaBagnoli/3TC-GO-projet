@@ -30,7 +30,15 @@ func answer(server_socket net.Conn) {
 
 func sendFileToServer(server_socket net.Conn) {
 	fmt.Println("Let's send the picture we want to modify")
-	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test3.png")
+	/*var i string
+	fmt.Printf("Enter the name of the picture you want to blur (png only) :")
+	fmt.Scanf(i)
+	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/i")
+	var p string
+	fmt.Printf("Enter the name of the percentage at which you want to blur :")
+	fmt.Scanf(p)*/
+	//file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test3.png")
+	file, err := os.Open("/mnt/c/Users/eolia/Downloads/test3.png")
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -14,16 +14,17 @@ import (
 	"image/color"
 	"image/png"
 	"log"
+	"math"
 	"os"
 	"time"
 )
 
 var newImg = image.NewRGBA(image.Rect(0, 0, 10, 10))
-var pourcentage_flou = 0.005
+var pourcentage_flou = 30
 
 func main() {
 
-	catFile, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test3.png")
+	catFile, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test4.png")
 	if err != nil {
 		log.Fatal(err) // trouver comment enlever le fatal pour pas shutdown tout le programme
 	}
@@ -37,23 +38,40 @@ func main() {
 	start := time.Now()
 
 	// cette fois, le niveau de flou dépend du pourcentage donné (100% = moyenne de tous les pixels, 0% = image initiale) ça march po :((
-
-	/*nv_flou_x := int(pourcentage_flou * float64(cat.Bounds().Size().X))
-	nv_flou_y := int(pourcentage_flou * float64(cat.Bounds().Size().Y))
+	// ca marche entre 15 et 80
+	if pourcentage_flou < 15 {
+		pourcentage_flou = 15
+	}
+	if pourcentage_flou > 80 {
+		pourcentage_flou = 80
+	}
+	x := float64(pourcentage_flou) / math.Log2(float64(cat.Bounds().Size().X))
+	nv_flou_x := int(math.Pow(2, x))
+	y := float64(pourcentage_flou) / math.Log2(float64(cat.Bounds().Size().Y))
+	nv_flou_y := int(math.Pow(2, y))
 	fmt.Println(nv_flou_x)
-	fmt.Println(nv_flou_y)*/
-	nv_flou_x := 15
-	nv_flou_y := 10
+	fmt.Println(nv_flou_y)
 
 	//création nvelle image qui sera l'image floue finale à la taille de l'ancienne
 	newImg = image.NewRGBA(image.Rect(0, 0, cat.Bounds().Size().X, cat.Bounds().Size().Y))
-
 	for i := 0; i < (cat.Bounds().Size().X); i = i + nv_flou_x {
 		for j := 0; j < (cat.Bounds().Size().Y); j = j + nv_flou_y {
 			//lancer la goroutine avec la modification de la nouvelle image (globale) direct dans la fonction
 			go box_blur(cat, nv_flou_x, nv_flou_y, i, j)
 		}
 	}
+	// lui faire faire les 2 bandes restantes sur le bord au cas où la taille de l'image est pas divisible par le flou demandé
+	reste_sur_x := cat.Bounds().Size().X % nv_flou_x
+	reste_sur_y := cat.Bounds().Size().Y % nv_flou_y
+	for i := 0; i < (cat.Bounds().Size().Y); i = i + nv_flou_y {
+		go box_blur(cat, reste_sur_x, nv_flou_y, (cat.Bounds().Size().X - reste_sur_x), i)
+	}
+	for j := 0; j < (cat.Bounds().Size().X); j = j + nv_flou_x {
+		go box_blur(cat, nv_flou_x, reste_sur_y, j, (cat.Bounds().Size().Y - reste_sur_y))
+	}
+
+	/*go box_blur(cat, nv_flou_x, (cat.Bounds().Size().X - reste_sur_x), 0, reste_sur_x)
+	go box_blur(cat, (cat.Bounds().Size().Y - reste_sur_y), nv_flou_y, reste_sur_y, 0)*/
 
 	end := time.Now()
 	fmt.Println(end.Sub(start))
@@ -80,18 +98,15 @@ func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, i int, j int) /*
 	var newRed uint32
 	var newGreen uint32
 	var newBlue uint32
-	var newAlpha uint32
 	var nbreElem uint32
 
 	var newRedConv uint8
 	var newGreenConv uint8
 	var newBlueConv uint8
-	var newAlphaConv uint8
 
 	newRed = 0
 	newGreen = 0
 	newBlue = 0
-	newAlpha = 0
 
 	nbreElem = 0
 
@@ -100,12 +115,11 @@ func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, i int, j int) /*
 
 			//rester en uint32 ici
 
-			r, g, b, a := oldImg.At(k, l).RGBA()
+			r, g, b, _ := oldImg.At(k, l).RGBA()
 
 			newRed = (nbreElem*newRed + r) / (nbreElem + 1)
 			newGreen = (nbreElem*newGreen + g) / (nbreElem + 1)
 			newBlue = (nbreElem*newBlue + b) / (nbreElem + 1)
-			newAlpha = (nbreElem*newAlpha + a) / (nbreElem + 1)
 
 			nbreElem = nbreElem + 1
 		}
@@ -115,12 +129,16 @@ func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, i int, j int) /*
 	newRedConv = uint8(newRed / 257)
 	newGreenConv = uint8(newGreen / 257)
 	newBlueConv = uint8(newBlue / 257)
-	newAlphaConv = uint8(newAlpha / 257)
+
+	/*println(newBlueConv)
+	println(newRedConv)
+	println(newGreenConv)*/
 
 	// au lieu d'écrire dans newImg, on écrit dans la grande newImg (var globale)
 	for k := i; k < i+nv_flou_x; k++ {
 		for l := j; l < j+nv_flou_y; l++ {
-			newImg.Set(k, l, color.RGBA{newRedConv, newGreenConv, newBlueConv, newAlphaConv})
+			newImg.Set(k, l, color.RGBA{newRedConv, newGreenConv, newBlueConv, 255})
+			//newImg.Set(k, l, color.RGBA{255, 0, 0, 255})
 		}
 	}
 }
