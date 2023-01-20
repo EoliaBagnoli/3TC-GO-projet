@@ -12,29 +12,30 @@ import (
 const BUFFERSIZE = 1024
 
 func main() {
-	connection, err := net.Dial("tcp", "localhost:27001")
+	server_socket, err := net.Dial("tcp", "localhost:27001")
 	if err != nil {
 		panic(err)
 	}
-	defer connection.Close()
-	answer(connection)
+	defer server_socket.Close()
+	answer(server_socket)
 }
 
-func answer(connection net.Conn) {
+func answer(server_socket net.Conn) {
 	fmt.Println("Connected to a server !")
-	defer connection.Close()
-	sendFileToServer(connection)
-	getFileFromServer(connection)
-	connection.Close()
+	defer server_socket.Close()
+	sendFileToServer(server_socket)
+	getFileFromServer(server_socket)
+	server_socket.Close()
 }
 
-func sendFileToServer(connection net.Conn) {
+func sendFileToServer(server_socket net.Conn) {
 	fmt.Println("Let's send the picture we want to modify")
 	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test3.png")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	// on recup les stats du fichier demandé
 	fileInfo, err := file.Stat()
 	if err != nil {
 		fmt.Println(err)
@@ -51,35 +52,35 @@ func sendFileToServer(connection net.Conn) {
 	println(" ")
 	println(" ")
 
-	connection.Write(size)
+	server_socket.Write(size)
 
-	//connection.Write([]byte(fileSize))
-	connection.Write([]byte(fileName))
+	//server_socket.Write([]byte(fileSize))
+	server_socket.Write([]byte(fileName))
 	sendBuffer := make([]byte, BUFFERSIZE)
 	for {
+		// de façon infinie, on met l'image dans le buffer, on regarde si on a atteint le EOF (end of file), si non on envoie
 		_, err = file.Read(sendBuffer)
 		if err == io.EOF {
 			break
 		}
-		connection.Write(sendBuffer)
+		server_socket.Write(sendBuffer)
 	}
 	fmt.Println("File has been sent !")
 }
 
-func getFileFromServer(connection net.Conn) {
+func getFileFromServer(server_socket net.Conn) {
 	fmt.Println("Receiving the modified file")
 	bufferFileName := make([]byte, 64)
 	bufferFileSize := make([]byte, 10)
 
-	connection.Read(bufferFileSize)
+	server_socket.Read(bufferFileSize)
 	fmt.Println(" ")
 	fmt.Println("Receiving file of size : ")
 	fmt.Println(bufferFileSize)
 	fmt.Println(" ")
 	fmt.Println(" ")
 	fileSize, _ := strconv.ParseInt(strings.Trim(string(bufferFileSize), ":"), 10, 64)
-	connection.Read(bufferFileName)
-	//fileName := strings.Trim(string(bufferFileName), ":")
+	server_socket.Read(bufferFileName)
 
 	newFile, err := os.Create("test_reception_TCP.png")
 
@@ -91,11 +92,11 @@ func getFileFromServer(connection net.Conn) {
 
 	for {
 		if (fileSize - receivedBytes) < BUFFERSIZE {
-			io.CopyN(newFile, connection, (fileSize - receivedBytes))
-			connection.Read(make([]byte, (receivedBytes+BUFFERSIZE)-fileSize))
+			io.CopyN(newFile, server_socket, (fileSize - receivedBytes))
+			server_socket.Read(make([]byte, (receivedBytes+BUFFERSIZE)-fileSize))
 			break
 		}
-		io.CopyN(newFile, connection, BUFFERSIZE)
+		io.CopyN(newFile, server_socket, BUFFERSIZE)
 		receivedBytes += BUFFERSIZE
 	}
 	fmt.Println("Received file completely!")

@@ -6,7 +6,6 @@ import (
 	"image/color"
 	"image/png"
 	"io"
-	"log"
 	"net"
 	"os"
 	"strconv"
@@ -19,34 +18,34 @@ var pourcentage_flou = 0.005
 const BUFFERSIZE = 1024
 
 func main() {
-	server, err := net.Listen("tcp", "localhost:27001")
+	server_socket, err := net.Listen("tcp", "localhost:27001")
 	if err != nil {
 		fmt.Println("Error listetning: ", err)
 		os.Exit(1)
 	}
-	defer server.Close()
-	fmt.Println("Server started! Waiting for connections...")
+	defer server_socket.Close()
+	fmt.Println("Server started! Waiting for client_sockets...")
 	for {
-		connection, err := server.Accept()
+		client_socket, err := server_socket.Accept()
 		if err != nil {
 			fmt.Println("Error: ", err)
 			os.Exit(1)
 		}
 		fmt.Println("Client connected")
-		go answer(connection)
+		go answer(client_socket)
 	}
 }
 
-func answer(connection net.Conn) {
-	defer connection.Close()
-	getFileFromClient(connection)
+func answer(client_socket net.Conn) {
+	defer client_socket.Close()
+	getFileFromClient(client_socket)
 	do_box_blur()
 	println("*************Box blur done**************")
-	sendFileToClient(connection)
-	connection.Close()
+	sendFileToClient(client_socket)
+	client_socket.Close()
 }
 
-func sendFileToClient(connection net.Conn) {
+func sendFileToClient(client_socket net.Conn) {
 	fmt.Println("Let's send the modified picture")
 	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/Niveau 2/image_temp.png")
 	if err != nil {
@@ -67,25 +66,25 @@ func sendFileToClient(connection net.Conn) {
 	fmt.Println(size)
 	println(" ")
 	println(" ")
-	connection.Write(size)
-	connection.Write([]byte(fileName))
+	client_socket.Write(size)
+	client_socket.Write([]byte(fileName))
 	sendBuffer := make([]byte, BUFFERSIZE)
 	for {
 		_, err = file.Read(sendBuffer)
 		if err == io.EOF {
 			break
 		}
-		connection.Write(sendBuffer)
+		client_socket.Write(sendBuffer)
 	}
 	fmt.Println("File has been sent !")
 }
 
-func getFileFromClient(connection net.Conn) {
+func getFileFromClient(client_socket net.Conn) {
 	fmt.Println("Receiving the file")
 	bufferFileName := make([]byte, 64)
 	bufferFileSize := make([]byte, 10)
 
-	connection.Read(bufferFileSize)
+	client_socket.Read(bufferFileSize)
 	fmt.Println(" ")
 	fmt.Println("Receiving file of size : ")
 	fmt.Println(bufferFileSize)
@@ -93,7 +92,7 @@ func getFileFromClient(connection net.Conn) {
 	fmt.Println(" ")
 	fileSize, _ := strconv.ParseInt(strings.Trim(string(bufferFileSize), ":"), 10, 64)
 
-	connection.Read(bufferFileName)
+	client_socket.Read(bufferFileName)
 	//fileName := strings.Trim(string(bufferFileName), ":")
 
 	newFile, err := os.Create("image_temp.png")
@@ -106,11 +105,11 @@ func getFileFromClient(connection net.Conn) {
 
 	for {
 		if (fileSize - receivedBytes) < BUFFERSIZE {
-			io.CopyN(newFile, connection, (fileSize - receivedBytes))
-			connection.Read(make([]byte, (receivedBytes+BUFFERSIZE)-fileSize))
+			io.CopyN(newFile, client_socket, (fileSize - receivedBytes))
+			client_socket.Read(make([]byte, (receivedBytes+BUFFERSIZE)-fileSize))
 			break
 		}
-		io.CopyN(newFile, connection, BUFFERSIZE)
+		io.CopyN(newFile, client_socket, BUFFERSIZE)
 		receivedBytes += BUFFERSIZE
 	}
 	fmt.Println("Received file completely!")
@@ -132,13 +131,15 @@ func do_box_blur() {
 
 	catFile, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/Niveau 2/image_temp.png")
 	if err != nil {
-		log.Fatal(err) // trouver comment enlever le fatal pour pas shutdown tout le programme
+		fmt.Println(err)
+		return
 	}
 	defer catFile.Close()
 
 	cat, err := png.Decode(catFile)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 
 	nv_flou_x := 15
@@ -156,6 +157,7 @@ func do_box_blur() {
 	outputFile, err := os.Create("image_temp.png")
 	if err != nil {
 		fmt.Println("pas possible de créer le nv fichier")
+		return
 	}
 	png.Encode(outputFile, newImg)
 	outputFile.Close()
