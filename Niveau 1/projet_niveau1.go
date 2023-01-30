@@ -16,11 +16,13 @@ import (
 	"log"
 	"math"
 	"os"
+	"sync"
 	"time"
 )
 
 var newImg = image.NewRGBA(image.Rect(0, 0, 10, 10))
-var pourcentage_flou = 30
+var pourcentage_flou = 50
+var blur_group *sync.WaitGroup
 
 func main() {
 
@@ -51,6 +53,8 @@ func main() {
 	nv_flou_y := int(math.Pow(2, y))
 	fmt.Println(nv_flou_x)
 	fmt.Println(nv_flou_y)
+
+	// création du channel
 
 	//création nvelle image qui sera l'image floue finale à la taille de l'ancienne
 	newImg = image.NewRGBA(image.Rect(0, 0, cat.Bounds().Size().X, cat.Bounds().Size().Y))

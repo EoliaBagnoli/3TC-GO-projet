@@ -6,14 +6,18 @@ import (
 	"image/color"
 	"image/png"
 	"io"
+	"math"
 	"net"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var newImg = image.NewRGBA(image.Rect(0, 0, 10, 10))
-var pourcentage_flou = 0.005
+var pourcentage_flou int64
+
+var blur_group sync.WaitGroup
 
 const BUFFERSIZE = 1024
 
@@ -83,6 +87,15 @@ func getFileFromClient(client_socket net.Conn) {
 	fmt.Println("Receiving the file")
 	bufferFileName := make([]byte, 64)
 	bufferFileSize := make([]byte, 10)
+	bufferPercentage := make([]byte, 3)
+
+	client_socket.Read(bufferPercentage)
+	println("**************Pourcentage flou est :")
+	//enlever les ":" inutiles
+	p_string := strings.Trim(string(bufferPercentage), ":")
+	//convertir en int64
+	pourcentage_flou, _ = strconv.ParseInt(p_string, 10, 64)
+	println(pourcentage_flou)
 
 	client_socket.Read(bufferFileSize)
 	fmt.Println(" ")
@@ -100,6 +113,7 @@ func getFileFromClient(client_socket net.Conn) {
 	if err != nil {
 		panic(err)
 	}
+
 	defer newFile.Close()
 	var receivedBytes int64
 
@@ -127,8 +141,21 @@ func fillString(retunString string, toLength int) string {
 	return retunString
 }
 
+/* func fillString(retunString string, toLength int) string {
+	for {
+		lengtString := len(retunString)
+		if lengtString < toLength {
+			retunString = retunString + ":"
+			continue
+		}
+		break
+	}
+	return retunString
+} */
+
 func do_box_blur() {
 
+	/// ENLEVER IMAGE TEMP
 	catFile, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/Niveau 2/image_temp.png")
 	if err != nil {
 		fmt.Println(err)
@@ -142,17 +169,36 @@ func do_box_blur() {
 		return
 	}
 
-	nv_flou_x := 15
-	nv_flou_y := 10
+	// cette fois, le niveau de flou dépend du pourcentage donné (100% = moyenne de tous les pixels, 0% = image initiale) ça march po :((
+	// ca marche entre 15 et 80
+	if pourcentage_flou < 15 {
+		pourcentage_flou = 15
+	}
+	if pourcentage_flou > 80 {
+		pourcentage_flou = 80
+	}
+	x := float64(pourcentage_flou) / math.Log2(float64(cat.Bounds().Size().X))
+	nv_flou_x := int(math.Pow(2, x))
+	y := float64(pourcentage_flou) / math.Log2(float64(cat.Bounds().Size().Y))
+	nv_flou_y := int(math.Pow(2, y))
+	fmt.Println(nv_flou_x)
+	fmt.Println(nv_flou_y)
 
 	newImg = image.NewRGBA(image.Rect(0, 0, cat.Bounds().Size().X, cat.Bounds().Size().Y))
+
+	fmt.Println("WAITGROUP")
+	fmt.Println(&blur_group)
 
 	for i := 0; i < (cat.Bounds().Size().X); i = i + nv_flou_x {
 		for j := 0; j < (cat.Bounds().Size().Y); j = j + nv_flou_y {
 			//lancer la goroutine avec la modification de la nouvelle image (globale) direct dans la fonction
-			go box_blur(cat, nv_flou_x, nv_flou_y, i, j)
+			// OS.NumCPU
+			blur_group.Add(1)
+			// Ici on fait un wait group et un pool de workers
+			go box_blur(cat, nv_flou_x, nv_flou_y, i, j, &blur_group)
 		}
 	}
+	blur_group.Wait()
 
 	outputFile, err := os.Create("image_temp.png")
 	if err != nil {
@@ -163,7 +209,7 @@ func do_box_blur() {
 	outputFile.Close()
 }
 
-func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, i int, j int) /* *image.RGBA*/ {
+func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, i int, j int, blur_group *sync.WaitGroup) /* *image.RGBA*/ {
 
 	var newRed uint32
 	var newGreen uint32
@@ -204,4 +250,7 @@ func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, i int, j int) /*
 			newImg.Set(k, l, color.RGBA{newRedConv, newGreenConv, newBlueConv, newAlphaConv})
 		}
 	}
+	(*blur_group).Done()
 }
+
+///

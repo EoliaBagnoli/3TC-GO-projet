@@ -30,19 +30,23 @@ func answer(server_socket net.Conn) {
 
 func sendFileToServer(server_socket net.Conn) {
 	fmt.Println("Let's send the picture we want to modify")
-	/*var i string
-	fmt.Printf("Enter the name of the picture you want to blur (png only) :")
-	fmt.Scanf(i)
-	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/i")
-	var p string
-	fmt.Printf("Enter the name of the percentage at which you want to blur :")
-	fmt.Scanf(p)*/
-	//file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test3.png")
-	file, err := os.Open("/mnt/c/Users/eolia/Downloads/test3.png")
+	var i string
+	fmt.Printf("Enter the name of the picture you want to blur (png only) : ")
+	// Taking input from user
+	fmt.Scanln(&i)
+	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/" + i)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	var p string
+	fmt.Printf("Enter the percentage at which you want to blur : ")
+	fmt.Scanln(&p)
+	p = fillString(p, 3)
+
+	//file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test3.png")
+	//file, err := os.Open("/mnt/c/Users/eolia/Downloads/test3.png")
+
 	// on recup les stats du fichier demandé
 	fileInfo, err := file.Stat()
 	if err != nil {
@@ -51,7 +55,8 @@ func sendFileToServer(server_socket net.Conn) {
 	}
 	fileSize := fillString(strconv.FormatInt(fileInfo.Size(), 10), 10)
 	//print("File has a size of " + fileSize)
-	fileName := fillString(fileInfo.Name(), 64)
+	fileName := fillString(fileInfo.Name(), 2)
+	p_string := fillString(p, 3)
 
 	size := []byte(fileSize)
 	println(" ")
@@ -59,6 +64,11 @@ func sendFileToServer(server_socket net.Conn) {
 	fmt.Println(size)
 	println(" ")
 	println(" ")
+
+	println("en train d'envoyer p")
+	server_socket.Write([]byte(p_string))
+	println(p)
+	println("p envoyé")
 
 	server_socket.Write(size)
 
@@ -121,3 +131,8 @@ func fillString(retunString string, toLength int) string {
 	}
 	return retunString
 }
+
+/*
+func fillString(message string) string {
+	return message + "*"
+} */
