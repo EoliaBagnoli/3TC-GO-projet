@@ -21,18 +21,20 @@ import (
 )
 
 var newImg = image.NewRGBA(image.Rect(0, 0, 10, 10))
-var pourcentage_flou = 50
-var blur_group *sync.WaitGroup
+var pourcentage_flou = 90
+var blur_group sync.WaitGroup
+var NUMBER_OF_CPUs = 12
 
 func main() {
 
+	var cat image.Image
 	catFile, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test4.png")
 	if err != nil {
-		log.Fatal(err) // trouver comment enlever le fatal pour pas shutdown tout le programme
+		log.Fatal(err)
 	}
 	defer catFile.Close()
 
-	cat, err := png.Decode(catFile)
+	cat, err = png.Decode(catFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,24 +57,47 @@ func main() {
 	fmt.Println(nv_flou_y)
 
 	// création du channel
+	numJobs := ((cat.Bounds().Size().X / nv_flou_x) + 1) * ((cat.Bounds().Size().Y / nv_flou_y) + 1)
+	fmt.Println("numJobs :")
+	fmt.Println(numJobs)
+	jobs := make(chan [2]int, numJobs)
 
 	//création nvelle image qui sera l'image floue finale à la taille de l'ancienne
 	newImg = image.NewRGBA(image.Rect(0, 0, cat.Bounds().Size().X, cat.Bounds().Size().Y))
+
+	fmt.Println("WAITGROUP")
+	fmt.Println(&blur_group)
+	counter := 0
+	fmt.Println(cat.Bounds().Size().X)
+	fmt.Println(cat.Bounds().Size().Y)
+
 	for i := 0; i < (cat.Bounds().Size().X); i = i + nv_flou_x {
 		for j := 0; j < (cat.Bounds().Size().Y); j = j + nv_flou_y {
 			//lancer la goroutine avec la modification de la nouvelle image (globale) direct dans la fonction
-			go box_blur(cat, nv_flou_x, nv_flou_y, i, j)
+			jobs <- [2]int{i, j}
+			counter++
+			//fmt.Println(counter)
 		}
 	}
+	fmt.Println("counter :")
+	fmt.Println(counter)
+
+	for w := 1; w <= NUMBER_OF_CPUs; w++ {
+		blur_group.Add(1)
+		go worker(cat, nv_flou_x, nv_flou_y, jobs, &blur_group)
+	}
+	close(jobs)
+	blur_group.Wait()
+
 	// lui faire faire les 2 bandes restantes sur le bord au cas où la taille de l'image est pas divisible par le flou demandé
-	reste_sur_x := cat.Bounds().Size().X % nv_flou_x
+	/*reste_sur_x := cat.Bounds().Size().X % nv_flou_x
 	reste_sur_y := cat.Bounds().Size().Y % nv_flou_y
 	for i := 0; i < (cat.Bounds().Size().Y); i = i + nv_flou_y {
-		go box_blur(cat, reste_sur_x, nv_flou_y, (cat.Bounds().Size().X - reste_sur_x), i)
+		go worker(cat, reste_sur_x, nv_flou_y, (cat.Bounds().Size().X - reste_sur_x), i)
 	}
 	for j := 0; j < (cat.Bounds().Size().X); j = j + nv_flou_x {
-		go box_blur(cat, nv_flou_x, reste_sur_y, j, (cat.Bounds().Size().Y - reste_sur_y))
-	}
+		go worker(cat, nv_flou_x, reste_sur_y, j, (cat.Bounds().Size().Y - reste_sur_y))
+	}*/
 
 	/*go box_blur(cat, nv_flou_x, (cat.Bounds().Size().X - reste_sur_x), 0, reste_sur_x)
 	go box_blur(cat, (cat.Bounds().Size().Y - reste_sur_y), nv_flou_y, reste_sur_y, 0)*/
@@ -92,57 +117,63 @@ func main() {
 
 // @param : image à flouter, niveau de flou, numéro de la portion d'image par rapport à l'image originale
 
-func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, i int, j int) /* *image.RGBA*/ {
+func worker(oldImg image.Image, nv_flou_x int, nv_flou_y int, jobs <-chan [2]int, blur_group *sync.WaitGroup) /* *image.RGBA*/ {
 
 	/*sans go routines : tps moyen d'execution = 40 ms sur test3.png (1280 x 800 px)
 	avec go routines : tps moyen d'execution = entre 1 et 11 ms sur même fichier pour flou de 30
 	avec go routines : le temps dépend du niveau de flou que l'on veut et donc du nbre de go routines à créer : très efficace pour un flou
 	elevé mais pas pour un flou petit. En dessous de 7, c'est mieux d'utiliser la version sans go routines. */
 
-	var newRed uint32
-	var newGreen uint32
-	var newBlue uint32
-	var nbreElem uint32
+	defer blur_group.Done()
+	for index := range jobs {
+		i := index[0]
+		j := index[1]
 
-	var newRedConv uint8
-	var newGreenConv uint8
-	var newBlueConv uint8
+		var newRed uint32
+		var newGreen uint32
+		var newBlue uint32
+		var nbreElem uint32
 
-	newRed = 0
-	newGreen = 0
-	newBlue = 0
+		var newRedConv uint8
+		var newGreenConv uint8
+		var newBlueConv uint8
 
-	nbreElem = 0
+		newRed = 0
+		newGreen = 0
+		newBlue = 0
 
-	for k := i; k < i+nv_flou_x; k++ {
-		for l := j; l < j+nv_flou_y; l++ {
+		nbreElem = 0
 
-			//rester en uint32 ici
+		for k := i; k < i+nv_flou_x; k++ {
+			for l := j; l < j+nv_flou_y; l++ {
 
-			r, g, b, _ := oldImg.At(k, l).RGBA()
+				//rester en uint32 ici
 
-			newRed = (nbreElem*newRed + r) / (nbreElem + 1)
-			newGreen = (nbreElem*newGreen + g) / (nbreElem + 1)
-			newBlue = (nbreElem*newBlue + b) / (nbreElem + 1)
+				r, g, b, _ := oldImg.At(k, l).RGBA()
 
-			nbreElem = nbreElem + 1
+				newRed = (nbreElem*newRed + r) / (nbreElem + 1)
+				newGreen = (nbreElem*newGreen + g) / (nbreElem + 1)
+				newBlue = (nbreElem*newBlue + b) / (nbreElem + 1)
+
+				nbreElem = nbreElem + 1
+			}
 		}
-	}
 
-	//convertir en uint8 ici avec 4 nvelles var
-	newRedConv = uint8(newRed / 257)
-	newGreenConv = uint8(newGreen / 257)
-	newBlueConv = uint8(newBlue / 257)
+		//convertir en uint8 ici avec 4 nvelles var
+		newRedConv = uint8(newRed / 257)
+		newGreenConv = uint8(newGreen / 257)
+		newBlueConv = uint8(newBlue / 257)
 
-	/*println(newBlueConv)
-	println(newRedConv)
-	println(newGreenConv)*/
+		/*println(newBlueConv)
+		println(newRedConv)
+		println(newGreenConv)*/
 
-	// au lieu d'écrire dans newImg, on écrit dans la grande newImg (var globale)
-	for k := i; k < i+nv_flou_x; k++ {
-		for l := j; l < j+nv_flou_y; l++ {
-			newImg.Set(k, l, color.RGBA{newRedConv, newGreenConv, newBlueConv, 255})
-			//newImg.Set(k, l, color.RGBA{255, 0, 0, 255})
+		// au lieu d'écrire dans newImg, on écrit dans la grande newImg (var globale)
+		for k := i; k < i+nv_flou_x; k++ {
+			for l := j; l < j+nv_flou_y; l++ {
+				newImg.Set(k, l, color.RGBA{newRedConv, newGreenConv, newBlueConv, 255})
+				//newImg.Set(k, l, color.RGBA{255, 0, 0, 255})
+			}
 		}
 	}
 }

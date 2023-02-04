@@ -12,9 +12,15 @@ import (
 const BUFFERSIZE = 1024
 
 func main() {
-	server_socket, err := net.Dial("tcp", "localhost:27001")
-	if err != nil {
-		panic(err)
+	var server_socket net.Conn
+	var err error
+	for {
+		server_socket, err = net.Dial("tcp", "localhost:27001")
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			break
+		}
 	}
 	defer server_socket.Close()
 	answer(server_socket)
@@ -31,18 +37,34 @@ func answer(server_socket net.Conn) {
 func sendFileToServer(server_socket net.Conn) {
 	fmt.Println("Let's send the picture we want to modify")
 	var i string
-	fmt.Printf("Enter the name of the picture you want to blur (png only) : ")
-	// Taking input from user
-	fmt.Scanln(&i)
-	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/" + i)
-	if err != nil {
-		fmt.Println(err)
-		return
+	var file *os.File
+	var err error
+	for {
+		fmt.Printf("Enter the name of the picture you want to blur (png only) : ")
+		// Taking input from user
+		fmt.Scanln(&i)
+		file, err = os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/" + i)
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			break
+		}
 	}
 	var p string
-	fmt.Printf("Enter the percentage at which you want to blur : ")
-	fmt.Scanln(&p)
-	p = fillString(p, 3)
+	for {
+		fmt.Printf("Enter the percentage at which you want to blur : ")
+		fmt.Scanln(&p)
+		p, err := strconv.Atoi(p)
+		if err != nil {
+			fmt.Println("Please enter an integer")
+		} else if p < 0 || p > 100 {
+			fmt.Println("Please enter a percentage between 0 and 100")
+		} else {
+			p := strconv.Itoa(p)
+			p = fillString(p, 3)
+			break
+		}
+	}
 
 	//file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test3.png")
 	//file, err := os.Open("/mnt/c/Users/eolia/Downloads/test3.png")
@@ -51,7 +73,6 @@ func sendFileToServer(server_socket net.Conn) {
 	fileInfo, err := file.Stat()
 	if err != nil {
 		fmt.Println(err)
-		return
 	}
 	fileSize := fillString(strconv.FormatInt(fileInfo.Size(), 10), 10)
 	//print("File has a size of " + fileSize)
@@ -131,8 +152,3 @@ func fillString(retunString string, toLength int) string {
 	}
 	return retunString
 }
-
-/*
-func fillString(message string) string {
-	return message + "*"
-} */

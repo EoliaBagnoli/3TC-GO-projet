@@ -16,10 +16,11 @@ import (
 
 var newImg = image.NewRGBA(image.Rect(0, 0, 10, 10))
 var pourcentage_flou int64
-
 var blur_group sync.WaitGroup
 
 const BUFFERSIZE = 1024
+
+var NUMBER_OF_CPUs = 12
 
 func main() {
 	server_socket, err := net.Listen("tcp", "localhost:27001")
@@ -141,18 +142,6 @@ func fillString(retunString string, toLength int) string {
 	return retunString
 }
 
-/* func fillString(retunString string, toLength int) string {
-	for {
-		lengtString := len(retunString)
-		if lengtString < toLength {
-			retunString = retunString + ":"
-			continue
-		}
-		break
-	}
-	return retunString
-} */
-
 func do_box_blur() {
 
 	/// ENLEVER IMAGE TEMP
@@ -184,20 +173,36 @@ func do_box_blur() {
 	fmt.Println(nv_flou_x)
 	fmt.Println(nv_flou_y)
 
+	// création du channel
+	numJobs := ((cat.Bounds().Size().X / nv_flou_x) + 1) * ((cat.Bounds().Size().Y / nv_flou_y) + 1)
+	fmt.Println("numJobs :")
+	fmt.Println(numJobs)
+	jobs := make(chan [2]int, numJobs)
+
 	newImg = image.NewRGBA(image.Rect(0, 0, cat.Bounds().Size().X, cat.Bounds().Size().Y))
 
 	fmt.Println("WAITGROUP")
 	fmt.Println(&blur_group)
+	counter := 0
+	fmt.Println(cat.Bounds().Size().X)
+	fmt.Println(cat.Bounds().Size().Y)
 
 	for i := 0; i < (cat.Bounds().Size().X); i = i + nv_flou_x {
 		for j := 0; j < (cat.Bounds().Size().Y); j = j + nv_flou_y {
 			//lancer la goroutine avec la modification de la nouvelle image (globale) direct dans la fonction
-			// OS.NumCPU
-			blur_group.Add(1)
-			// Ici on fait un wait group et un pool de workers
-			go box_blur(cat, nv_flou_x, nv_flou_y, i, j, &blur_group)
+			jobs <- [2]int{i, j}
+			counter++
+			//fmt.Println(counter)
 		}
 	}
+	fmt.Println("counter :")
+	fmt.Println(counter)
+
+	for w := 1; w <= NUMBER_OF_CPUs; w++ {
+		blur_group.Add(1)
+		go box_blur(cat, nv_flou_x, nv_flou_y, jobs, &blur_group)
+	}
+	close(jobs)
 	blur_group.Wait()
 
 	outputFile, err := os.Create("image_temp.png")
@@ -209,48 +214,52 @@ func do_box_blur() {
 	outputFile.Close()
 }
 
-func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, i int, j int, blur_group *sync.WaitGroup) /* *image.RGBA*/ {
+func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, jobs <-chan [2]int, blur_group *sync.WaitGroup) /* *image.RGBA*/ {
 
-	var newRed uint32
-	var newGreen uint32
-	var newBlue uint32
-	var newAlpha uint32
-	var nbreElem uint32
+	defer blur_group.Done()
+	for index := range jobs {
+		i := index[0]
+		j := index[1]
+		var newRed uint32
+		var newGreen uint32
+		var newBlue uint32
+		var newAlpha uint32
+		var nbreElem uint32
 
-	var newRedConv uint8
-	var newGreenConv uint8
-	var newBlueConv uint8
-	var newAlphaConv uint8
+		var newRedConv uint8
+		var newGreenConv uint8
+		var newBlueConv uint8
+		var newAlphaConv uint8
 
-	newRed = 0
-	newGreen = 0
-	newBlue = 0
-	newAlpha = 0
+		newRed = 0
+		newGreen = 0
+		newBlue = 0
+		newAlpha = 0
 
-	nbreElem = 0
+		nbreElem = 0
 
-	for k := i; k < i+nv_flou_x; k++ {
-		for l := j; l < j+nv_flou_y; l++ {
-			r, g, b, a := oldImg.At(k, l).RGBA()
+		for k := i; k < i+nv_flou_x; k++ {
+			for l := j; l < j+nv_flou_y; l++ {
+				r, g, b, a := oldImg.At(k, l).RGBA()
 
-			newRed = (nbreElem*newRed + r) / (nbreElem + 1)
-			newGreen = (nbreElem*newGreen + g) / (nbreElem + 1)
-			newBlue = (nbreElem*newBlue + b) / (nbreElem + 1)
-			newAlpha = (nbreElem*newAlpha + a) / (nbreElem + 1)
+				newRed = (nbreElem*newRed + r) / (nbreElem + 1)
+				newGreen = (nbreElem*newGreen + g) / (nbreElem + 1)
+				newBlue = (nbreElem*newBlue + b) / (nbreElem + 1)
+				newAlpha = (nbreElem*newAlpha + a) / (nbreElem + 1)
 
-			nbreElem = nbreElem + 1
+				nbreElem = nbreElem + 1
+			}
+		}
+		newRedConv = uint8(newRed / 257)
+		newGreenConv = uint8(newGreen / 257)
+		newBlueConv = uint8(newBlue / 257)
+		newAlphaConv = uint8(newAlpha / 257)
+		for k := i; k < i+nv_flou_x; k++ {
+			for l := j; l < j+nv_flou_y; l++ {
+				newImg.Set(k, l, color.RGBA{newRedConv, newGreenConv, newBlueConv, newAlphaConv})
+			}
 		}
 	}
-	newRedConv = uint8(newRed / 257)
-	newGreenConv = uint8(newGreen / 257)
-	newBlueConv = uint8(newBlue / 257)
-	newAlphaConv = uint8(newAlpha / 257)
-	for k := i; k < i+nv_flou_x; k++ {
-		for l := j; l < j+nv_flou_y; l++ {
-			newImg.Set(k, l, color.RGBA{newRedConv, newGreenConv, newBlueConv, newAlphaConv})
-		}
-	}
-	(*blur_group).Done()
 }
 
 ///
