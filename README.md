@@ -5,9 +5,9 @@ _CARINGI Noé, BAGNOLI Eolia_
 Ce projet, codé en Golang, prend une image PNG et la floute. 
 
 &rarr;Le projet a trois niveaux de difficulté : 
-- Niveau 1 : floutage de la photo
-- Niveau 2 : floutage en utilisant les go routines
-- Niveau 3 : ajout d'un serveur et d'un client
+- Niveau 0 : floutage de la photo
+- Niveau 1 : floutage en utilisant les go routines
+- Niveau 2 : ajout d'un serveur et d'un client
 
 <ins>Exécution : </ins>
 
