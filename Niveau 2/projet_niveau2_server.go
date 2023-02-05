@@ -52,7 +52,7 @@ func answer(client_socket net.Conn) {
 
 func sendFileToClient(client_socket net.Conn) {
 	fmt.Println("Let's send the modified picture")
-	file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/Niveau 2/image_temp.png")
+	file, err := os.Open("./image_temp.png")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -64,7 +64,6 @@ func sendFileToClient(client_socket net.Conn) {
 	}
 	fileSize := fillString(strconv.FormatInt(fileInfo.Size(), 10), 10)
 	fileName := fillString(fileInfo.Name(), 64)
-	//print("File has a size of " + fileSize)
 	size := []byte(fileSize)
 	println(" ")
 	println("File has a size of : ")
@@ -107,7 +106,6 @@ func getFileFromClient(client_socket net.Conn) {
 	fileSize, _ := strconv.ParseInt(strings.Trim(string(bufferFileSize), ":"), 10, 64)
 
 	client_socket.Read(bufferFileName)
-	//fileName := strings.Trim(string(bufferFileName), ":")
 
 	newFile, err := os.Create("image_temp.png")
 
@@ -144,8 +142,7 @@ func fillString(retunString string, toLength int) string {
 
 func do_box_blur() {
 
-	/// ENLEVER IMAGE TEMP
-	catFile, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/Niveau 2/image_temp.png")
+	catFile, err := os.Open("./image_temp.png")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -159,7 +156,7 @@ func do_box_blur() {
 	}
 
 	// cette fois, le niveau de flou dépend du pourcentage donné (100% = moyenne de tous les pixels, 0% = image initiale) ça march po :((
-	// ca marche entre 15 et 80
+	// ca marche entre 15 et 50
 	if pourcentage_flou < 15 {
 		pourcentage_flou = 15
 	}
@@ -189,10 +186,8 @@ func do_box_blur() {
 
 	for i := 0; i < (cat.Bounds().Size().X); i = i + nv_flou_x {
 		for j := 0; j < (cat.Bounds().Size().Y); j = j + nv_flou_y {
-			//lancer la goroutine avec la modification de la nouvelle image (globale) direct dans la fonction
 			jobs <- [2]int{i, j}
 			counter++
-			//fmt.Println(counter)
 		}
 	}
 	fmt.Println("counter :")
@@ -214,7 +209,7 @@ func do_box_blur() {
 	outputFile.Close()
 }
 
-func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, jobs <-chan [2]int, blur_group *sync.WaitGroup) /* *image.RGBA*/ {
+func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, jobs <-chan [2]int, blur_group *sync.WaitGroup) {
 
 	defer blur_group.Done()
 	for index := range jobs {
@@ -261,5 +256,3 @@ func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, jobs <-chan [2]i
 		}
 	}
 }
-
-///

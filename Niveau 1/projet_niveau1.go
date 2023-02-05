@@ -1,11 +1,3 @@
-//create Gaussian flou
-//package image en go
-//package png permet de décoder les images
-// flouter une image = faire une moyenne entre des groupes de pixels
-
-//fonction At(x, y)
-//AlphaAt : avoir le taux de transparence d'un png
-
 package main
 
 import (
@@ -41,7 +33,7 @@ func main() {
 
 	start := time.Now()
 
-	// cette fois, le niveau de flou dépend du pourcentage donné (100% = moyenne de tous les pixels, 0% = image initiale) ça march po :((
+	// cette fois, le niveau de flou dépend du pourcentage donné (100% = moyenne de tous les pixels, 0% = image initiale)
 	// ca marche entre 15 et 80
 	if pourcentage_flou < 15 {
 		pourcentage_flou = 15
@@ -73,10 +65,8 @@ func main() {
 
 	for i := 0; i < (cat.Bounds().Size().X); i = i + nv_flou_x {
 		for j := 0; j < (cat.Bounds().Size().Y); j = j + nv_flou_y {
-			//lancer la goroutine avec la modification de la nouvelle image (globale) direct dans la fonction
 			jobs <- [2]int{i, j}
 			counter++
-			//fmt.Println(counter)
 		}
 	}
 	fmt.Println("counter :")
@@ -88,19 +78,6 @@ func main() {
 	}
 	close(jobs)
 	blur_group.Wait()
-
-	// lui faire faire les 2 bandes restantes sur le bord au cas où la taille de l'image est pas divisible par le flou demandé
-	/*reste_sur_x := cat.Bounds().Size().X % nv_flou_x
-	reste_sur_y := cat.Bounds().Size().Y % nv_flou_y
-	for i := 0; i < (cat.Bounds().Size().Y); i = i + nv_flou_y {
-		go worker(cat, reste_sur_x, nv_flou_y, (cat.Bounds().Size().X - reste_sur_x), i)
-	}
-	for j := 0; j < (cat.Bounds().Size().X); j = j + nv_flou_x {
-		go worker(cat, nv_flou_x, reste_sur_y, j, (cat.Bounds().Size().Y - reste_sur_y))
-	}*/
-
-	/*go box_blur(cat, nv_flou_x, (cat.Bounds().Size().X - reste_sur_x), 0, reste_sur_x)
-	go box_blur(cat, (cat.Bounds().Size().Y - reste_sur_y), nv_flou_y, reste_sur_y, 0)*/
 
 	end := time.Now()
 	fmt.Println(end.Sub(start))
@@ -164,15 +141,10 @@ func worker(oldImg image.Image, nv_flou_x int, nv_flou_y int, jobs <-chan [2]int
 		newGreenConv = uint8(newGreen / 257)
 		newBlueConv = uint8(newBlue / 257)
 
-		/*println(newBlueConv)
-		println(newRedConv)
-		println(newGreenConv)*/
-
-		// au lieu d'écrire dans newImg, on écrit dans la grande newImg (var globale)
+		// on écrit dans la grande newImg (var globale)
 		for k := i; k < i+nv_flou_x; k++ {
 			for l := j; l < j+nv_flou_y; l++ {
 				newImg.Set(k, l, color.RGBA{newRedConv, newGreenConv, newBlueConv, 255})
-				//newImg.Set(k, l, color.RGBA{255, 0, 0, 255})
 			}
 		}
 	}

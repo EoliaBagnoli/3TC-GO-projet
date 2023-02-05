@@ -43,7 +43,7 @@ func sendFileToServer(server_socket net.Conn) {
 		fmt.Printf("Enter the name of the picture you want to blur (png only) : ")
 		// Taking input from user
 		fmt.Scanln(&i)
-		file, err = os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/" + i)
+		file, err = os.Open("../" + i)
 		if err != nil {
 			fmt.Println(err)
 		} else {
@@ -52,22 +52,19 @@ func sendFileToServer(server_socket net.Conn) {
 	}
 	var p string
 	for {
-		fmt.Printf("Enter the percentage at which you want to blur : ")
+		fmt.Printf("Enter the percentage at which you want to blur (between 1 and 50) : ")
 		fmt.Scanln(&p)
-		p, err := strconv.Atoi(p)
+		p_int, err := strconv.Atoi(p)
 		if err != nil {
 			fmt.Println("Please enter an integer")
-		} else if p < 0 || p > 100 {
+		} else if p_int < 0 || p_int > 100 {
 			fmt.Println("Please enter a percentage between 0 and 100")
 		} else {
-			p := strconv.Itoa(p)
+			p = strconv.Itoa(p_int)
 			p = fillString(p, 3)
 			break
 		}
 	}
-
-	//file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test3.png")
-	//file, err := os.Open("/mnt/c/Users/eolia/Downloads/test3.png")
 
 	// on recup les stats du fichier demandé
 	fileInfo, err := file.Stat()
@@ -75,7 +72,6 @@ func sendFileToServer(server_socket net.Conn) {
 		fmt.Println(err)
 	}
 	fileSize := fillString(strconv.FormatInt(fileInfo.Size(), 10), 10)
-	//print("File has a size of " + fileSize)
 	fileName := fillString(fileInfo.Name(), 2)
 	p_string := fillString(p, 3)
 
@@ -93,7 +89,6 @@ func sendFileToServer(server_socket net.Conn) {
 
 	server_socket.Write(size)
 
-	//server_socket.Write([]byte(fileSize))
 	server_socket.Write([]byte(fileName))
 	sendBuffer := make([]byte, BUFFERSIZE)
 	for {
