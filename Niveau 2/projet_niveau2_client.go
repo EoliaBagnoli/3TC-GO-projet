@@ -41,6 +41,7 @@ func sendFileToServer(server_socket net.Conn) {
 	var err error
 	for {
 		fmt.Printf("Enter the name of the picture you want to blur (png only) : ")
+		// Taking input from user
 		fmt.Scanln(&i)
 		file, err = os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/" + i)
 		if err != nil {
@@ -60,21 +61,23 @@ func sendFileToServer(server_socket net.Conn) {
 			fmt.Println("Please enter a percentage between 0 and 100")
 		} else {
 			p := strconv.Itoa(p)
-			p = prepare_to_send(p, 3)
+			p = fillString(p, 3)
 			break
 		}
 	}
 
+	//file, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/test3.png")
+	//file, err := os.Open("/mnt/c/Users/eolia/Downloads/test3.png")
+
 	// on recup les stats du fichier demandé
 	fileInfo, err := file.Stat()
-
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	fileSize := prepare_to_send(strconv.FormatInt(fileInfo.Size(), 10), 10)
-	fileName := prepare_to_send(fileInfo.Name(), 2)
-	p_string := prepare_to_send(p, 3)
+	fileSize := fillString(strconv.FormatInt(fileInfo.Size(), 10), 10)
+	//print("File has a size of " + fileSize)
+	fileName := fillString(fileInfo.Name(), 2)
+	p_string := fillString(p, 3)
 
 	size := []byte(fileSize)
 	println(" ")
@@ -90,6 +93,7 @@ func sendFileToServer(server_socket net.Conn) {
 
 	server_socket.Write(size)
 
+	//server_socket.Write([]byte(fileSize))
 	server_socket.Write([]byte(fileName))
 	sendBuffer := make([]byte, BUFFERSIZE)
 	for {
@@ -137,8 +141,7 @@ func getFileFromServer(server_socket net.Conn) {
 	fmt.Println("Received file completely!")
 }
 
-func prepare_to_send(retunString string, toLength int) string {
-	// pour éviter d'avoir des espaces et des caractères invisibles dans le buffer après l'envoi tcp, on rajoute des ":" à la fin de la string
+func fillString(retunString string, toLength int) string {
 	for {
 		lengtString := len(retunString)
 		if lengtString < toLength {

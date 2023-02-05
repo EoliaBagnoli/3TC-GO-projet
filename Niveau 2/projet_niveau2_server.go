@@ -23,30 +23,18 @@ const BUFFERSIZE = 1024
 var NUMBER_OF_CPUs = 12
 
 func main() {
-	var server_socket net.Listener
-	var err error
-	for {
-		server_socket, err = net.Listen("tcp", "localhost:27001")
-		if err != nil {
-			fmt.Println("Error listetning: ", err)
-		} else {
-			break
-		}
+	server_socket, err := net.Listen("tcp", "localhost:27001")
+	if err != nil {
+		fmt.Println("Error listetning: ", err)
+		os.Exit(1)
 	}
-
 	defer server_socket.Close()
 	fmt.Println("Server started! Waiting for client_sockets...")
-
 	for {
-		var client_socket net.Conn
-		var err error
-		for {
-			client_socket, err = server_socket.Accept()
-			if err != nil {
-				fmt.Println("Error: ", err)
-			} else {
-				break
-			}
+		client_socket, err := server_socket.Accept()
+		if err != nil {
+			fmt.Println("Error: ", err)
+			os.Exit(1)
 		}
 		fmt.Println("Client connected")
 		go answer(client_socket)
@@ -74,8 +62,8 @@ func sendFileToClient(client_socket net.Conn) {
 		fmt.Println(err)
 		return
 	}
-	fileSize := prepare_to_send(strconv.FormatInt(fileInfo.Size(), 10), 10)
-	fileName := prepare_to_send(fileInfo.Name(), 64)
+	fileSize := fillString(strconv.FormatInt(fileInfo.Size(), 10), 10)
+	fileName := fillString(fileInfo.Name(), 64)
 	//print("File has a size of " + fileSize)
 	size := []byte(fileSize)
 	println(" ")
@@ -104,7 +92,7 @@ func getFileFromClient(client_socket net.Conn) {
 
 	client_socket.Read(bufferPercentage)
 	println("**************Pourcentage flou est :")
-	//enlever les ":" inutiles de prepare_to_send
+	//enlever les ":" inutiles
 	p_string := strings.Trim(string(bufferPercentage), ":")
 	//convertir en int64
 	pourcentage_flou, _ = strconv.ParseInt(p_string, 10, 64)
@@ -119,6 +107,7 @@ func getFileFromClient(client_socket net.Conn) {
 	fileSize, _ := strconv.ParseInt(strings.Trim(string(bufferFileSize), ":"), 10, 64)
 
 	client_socket.Read(bufferFileName)
+	//fileName := strings.Trim(string(bufferFileName), ":")
 
 	newFile, err := os.Create("image_temp.png")
 
@@ -141,7 +130,7 @@ func getFileFromClient(client_socket net.Conn) {
 	fmt.Println("Received file completely!")
 }
 
-func prepare_to_send(retunString string, toLength int) string {
+func fillString(retunString string, toLength int) string {
 	for {
 		lengtString := len(retunString)
 		if lengtString < toLength {
@@ -155,6 +144,7 @@ func prepare_to_send(retunString string, toLength int) string {
 
 func do_box_blur() {
 
+	/// ENLEVER IMAGE TEMP
 	catFile, err := os.Open("/mnt/c/Users/eolia/Documents/INSA/3TC/ELP/3TC-GO-projet/Niveau 2/image_temp.png")
 	if err != nil {
 		fmt.Println(err)
@@ -168,9 +158,8 @@ func do_box_blur() {
 		return
 	}
 
-	// cette fois, le niveau de flou dépend du pourcentage donné (100% = moyenne de tous les pixels, 0% = image initiale)
-	// ca marche bien entre 15 et 80
-
+	// cette fois, le niveau de flou dépend du pourcentage donné (100% = moyenne de tous les pixels, 0% = image initiale) ça march po :((
+	// ca marche entre 15 et 80
 	if pourcentage_flou < 15 {
 		pourcentage_flou = 15
 	}
@@ -200,8 +189,10 @@ func do_box_blur() {
 
 	for i := 0; i < (cat.Bounds().Size().X); i = i + nv_flou_x {
 		for j := 0; j < (cat.Bounds().Size().Y); j = j + nv_flou_y {
+			//lancer la goroutine avec la modification de la nouvelle image (globale) direct dans la fonction
 			jobs <- [2]int{i, j}
 			counter++
+			//fmt.Println(counter)
 		}
 	}
 	fmt.Println("counter :")
@@ -223,7 +214,7 @@ func do_box_blur() {
 	outputFile.Close()
 }
 
-func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, jobs <-chan [2]int, blur_group *sync.WaitGroup) {
+func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, jobs <-chan [2]int, blur_group *sync.WaitGroup) /* *image.RGBA*/ {
 
 	defer blur_group.Done()
 	for index := range jobs {
@@ -270,3 +261,5 @@ func box_blur(oldImg image.Image, nv_flou_x int, nv_flou_y int, jobs <-chan [2]i
 		}
 	}
 }
+
+///
